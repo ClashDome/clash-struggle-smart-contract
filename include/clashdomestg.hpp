@@ -34,22 +34,11 @@ public:
    [[eosio::on_notify("atomicassets::transfer")]] void blenderize(name from, name to, vector<uint64_t> asset_ids, string memo);
 
    clashdomestg(name receiver, name code, datastream<const char *> ds) : contract(receiver, code, ds),
-                                                                    _rambalance(get_self(), get_self().value),
-                                                                    _userres(EOSIO, CONTRACTN.value),
-                                                                    _pending_ram(get_self(), get_self().value),
-                                                                    _blenders(get_self(), get_self().value),
-                                                                    _rammarket(EOSIO, EOSIO.value)
+                                                                    _blenders(get_self(), get_self().value)
    {
    }
 
 private:
-   TABLE rambalance_item {
-      name collection; // Collection name (Index)
-      uint64_t bytes;  // Amount bytes available for this collection
-
-      auto primary_key() const { return collection.value; };
-   };
-   typedef multi_index<"rambalance"_n, rambalance_item> rambalance_table;
 
    TABLE blender_item {
       name owner;              // Owner account name
@@ -61,51 +50,8 @@ private:
    };
    typedef multi_index<"blenders"_n, blender_item> blender_table;
 
-   // AUX tables to read eosio smart contract tables and get RAM value
-
-   struct userres_item
-   {
-      name owner;
-      asset net_weight;
-      asset cpu_weight;
-      int64_t ram_bytes;
-
-      auto primary_key() const { return owner.value; };
-   };
-   typedef multi_index<"userres"_n, userres_item> user_resources;
-
-   struct connector_item
-   {
-      asset balance;
-      double weight;
-   };
-   typedef connector_item connector;
-
-   struct exchange_state
-   {
-      asset supply;
-      connector base;
-      connector quote;
-      auto primary_key() const { return supply.amount; };
-   };
-   typedef multi_index<"rammarket"_n, exchange_state> rammarket;
-
-   TABLE pending_ram_item
-   {
-      name owner;
-      int64_t ram_bytes;
-      asset amount;
-
-      auto primary_key() const { return owner.value; };
-   };
-   typedef multi_index<"pendingram"_n, pending_ram_item> pending_ram_table;
-
    // Define tables handlers
-   rambalance_table _rambalance;
-   user_resources _userres;
-   pending_ram_table _pending_ram;
    blender_table _blenders;
-   rammarket _rammarket;
 
    // Private Functions
    /*
