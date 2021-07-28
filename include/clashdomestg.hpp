@@ -23,11 +23,6 @@ public:
    using contract::contract;
 
    /*
-      RAM Actions
-   */
-   ACTION withdrawram(name authorized_account, name collection, int64_t bytes);
-
-   /*
       Blend Actions
    */
    ACTION createblend(name authorized_user, name target_collection, int32_t target_template, vector<int32_t> templates_to_mix);
@@ -49,8 +44,7 @@ public:
    }
 
 private:
-   TABLE rambalance_item
-   {
+   TABLE rambalance_item {
       name collection; // Collection name (Index)
       uint64_t bytes;  // Amount bytes available for this collection
 
@@ -58,8 +52,7 @@ private:
    };
    typedef multi_index<"rambalance"_n, rambalance_item> rambalance_table;
 
-   TABLE blender_item
-   {
+   TABLE blender_item {
       name owner;              // Owner account name
       name collection;         // Collection name
       int32_t target;          // Template ID to mint (index)
@@ -148,17 +141,15 @@ private:
    */
    bool isAuthorized(name collection, name user) {
 
-      auto itrCollection = atomicassets::collections.require_find(collection.value, "Error 15: No collection with this name exists!");
-      bool authorized = false;
-      vector<name> authAccounts = itrCollection->authorized_accounts;
-      for (auto it = authAccounts.begin(); it != authAccounts.end() && !authorized; it++)
-      {
-         if (user == name(*it))
-         {
-            authorized = true;
-         }
-      }
-      return authorized;
+        auto itrCollection = atomicassets::collections.require_find(collection.value, "Error 15: No collection with this name exists!");
+        bool authorized = false;
+        vector<name> authAccounts = itrCollection->authorized_accounts;
+        for (auto it = authAccounts.begin(); it != authAccounts.end() && !authorized; it++) {
+            if (user == name(*it)) {
+                authorized = true;
+            }
+        }
+        return authorized;
    }
 
    /*
@@ -166,14 +157,14 @@ private:
    */
    void mintasset(name collection, name schema, int32_t template_id, name to) {
        
-      vector<uint64_t> returning;
-      atomicassets::ATTRIBUTE_MAP nodata = {};
-      action(
-          permission_level{CONTRACTN, name("active")},
-          ATOMIC,
-          name("mintasset"),
-          make_tuple(CONTRACTN, collection, schema, template_id, to, nodata, nodata, returning))
-          .send();
+        vector<uint64_t> returning;
+        atomicassets::ATTRIBUTE_MAP nodata = {};
+        action(
+            permission_level{CONTRACTN, name("active")},
+            ATOMIC,
+            name("mintasset"),
+            make_tuple(CONTRACTN, collection, schema, template_id, to, nodata, nodata, returning))
+            .send();
    }
 
    /*

@@ -33,47 +33,6 @@
 }
 
 /*
-   Init RAM refund action called by authorized account in collection
-*/
-ACTION clashdomestg::withdrawram(name authorized_account, name collection, int64_t bytes) {
-
-   require_auth(authorized_account);
-
-   // Exists collection?
-   auto itrCollection = atomicassets::collections.find(collection.value);
-   check(itrCollection != atomicassets::collections.end(), "Error 08: Collection not exist!");
-
-   // Is claimer authorized?
-   check(isAuthorized(collection, authorized_account), "Error 109: You are not authorized for this operation");
-
-   // Is the collection into blend tables?
-   auto itrRamBalance = _rambalance.find(collection.value);
-   check(itrRamBalance != _rambalance.end(), "Error 10: The collection is not here!");
-
-   // Does it have enough balance to claim?
-   check(itrRamBalance->bytes >= bytes, "Error 11: Not enough RAM to sell!");
-
-   // Add user to waiting list for refunds
-   _pending_ram.emplace(_self, [&](auto &rec) {
-      rec.owner = authorized_account;
-      rec.ram_bytes = bytes;
-   });
-
-   // Call to sellram action
-   sellram(bytes);
-
-   // Update balances
-   if (itrRamBalance->bytes == bytes) // Empty deposit; erase reg.
-   {
-      _rambalance.erase(itrRamBalance);
-   } else {
-      _rambalance.modify(itrRamBalance, _self, [&](auto &rec) {
-         rec.bytes = itrRamBalance->bytes - bytes;
-      });
-   }
-}
-
-/*
    Create a blend or modify mixture templates
 */
 ACTION clashdomestg::createblend(name authorized_user, name target_collection, int32_t target_template, vector<int32_t> templates_to_mix) {
