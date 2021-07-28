@@ -9,9 +9,6 @@ using namespace std;
 #define ATOMIC name("atomicassets")
 #define EOSIO name("eosio")
 
-/*
-   IMPORTANT: Define your smart contract name here
-*/
 #define CONTRACTN name("clashdomestg")
 // -----------------------------------------------
 
