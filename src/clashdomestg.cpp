@@ -1,8 +1,6 @@
 #include <clashdomestg.hpp>
 
-/*
-   Create a blend or modify mixture templates
-*/
+
 ACTION clashdomestg::createblend(name authorized_user, name target_collection, int32_t target_template, vector<int32_t> templates_to_mix) {
 
    require_auth(authorized_user);
@@ -38,10 +36,7 @@ ACTION clashdomestg::createblend(name authorized_user, name target_collection, i
    }
 }
 
-/*
-   Listen for NFTs arriving to call for a blend
-*/
-[[eosio::on_notify("atomicassets::transfer")]] void clashdomestg::blenderize(name from, name to, vector<uint64_t> asset_ids, string memo) {
+[[eosio::on_notify("atomicassets::transfer")]] void clashdomestg::blenderize(const name &from, const name &to, vector<uint64_t> asset_ids, const string &memo) {
 
    // ignore NFTs sends by this smart contract. IMPORTANT!
    if (from != CONTRACTN) {
@@ -78,22 +73,83 @@ ACTION clashdomestg::createblend(name authorized_user, name target_collection, i
         auto itrTemplate = _templates.require_find(itrBlender->target, "Error 17: No template found!");
         check(itrTemplate->max_supply > itrTemplate->issued_supply || itrTemplate->max_supply == 0, "Error 07: This blender cannot mint more assets for that target!");
 
-        // All right; let's blend and burn
-        mintasset(itrBlender->collection, itrTemplate->schema_name, itrBlender->target, from);
-        burnmixture(asset_ids);
+        // Check if LUDIO payment has been conducted
+        auto openblends_itr = openblends.find(from.value);
+
+        if (openblends_itr == openblends.end()) {
+
+            openblends.emplace(get_self(), [&](auto &_openblends) {
+                _openblends.account_value = from.value;
+                _openblends.collection = itrBlender->collection;
+                _openblends.schema_name = itrTemplate->schema_name;
+                _openblends.target = itrBlender->target; 
+                _openblends.asset_ids = asset_ids;
+            });
+
+        } else {
+
+            // All right; let's blend and burn
+            mintasset(itrBlender->collection, itrTemplate->schema_name, itrBlender->target, from);
+            burnmixture(asset_ids);
+
+            openblends.erase(openblends_itr);
+        }
    }
 }
 
-/*
-   Call to erase blend from tables
-*/
 ACTION clashdomestg::delblend(name authorized_account, int32_t target_template) {
     
-   require_auth(authorized_account);
+    require_auth(authorized_account);
 
-   auto itrBlender = _blenders.require_find(target_template, "Error 01: No template with this ID!");
+    auto itrBlender = _blenders.require_find(target_template, "Error 01: No template with this ID!");
 
-   check(isAuthorized(itrBlender->collection, authorized_account), "Error 16: You are not authorized to delete this blend!");
+    check(isAuthorized(itrBlender->collection, authorized_account), "Error 16: You are not authorized to delete this blend!");
 
-   _blenders.erase(itrBlender);
+    _blenders.erase(itrBlender);
+}
+
+ACTION clashdomestg::transfer(const name &from, const name &to, const asset &quantity, const string &memo) {
+
+    require_auth(from);
+
+    if (from == _self || to != _self) {
+        return;
+    }
+
+    // CHECK IF IS IT A VALID LUDIO PAYMENT
+    check(quantity.symbol.is_valid(), "invalid quantity");
+    check(quantity.symbol == LUDIO_SYMBOL, "only LUDIO tokens allowed");
+    check(quantity.amount > 0, "only positive LUDIO transfer allowed");
+
+    // TODO: MIRAR Q ES LA CANTIDAD DE LUDIO CORRECTA
+
+    // TODO: REVISAR EL MEMO PARA Q SE PUEDAN TRANSFERIR LUDIO SIN HACER MEZCLAS
+
+    auto openblends_itr = openblends.find(from.value);
+
+    // CHECK IF NFTs HAVE BEEN TRANSFERED
+    if (openblends_itr == openblends.end()) {
+
+        openblends.emplace(get_self(), [&](auto &_openblends) {
+            _openblends.account_value = from.value;
+        });
+
+    } else {
+
+        // HACER LA MEZCLA
+        mintasset(openblends_itr->collection, openblends_itr->schema_name, openblends_itr->target, from);
+        burnmixture(openblends_itr->asset_ids);
+
+        openblends.erase(openblends_itr);
+    }
+}
+
+void clashdomestg::clopenblends() {
+    
+    require_auth(get_self());
+
+    auto it = openblends.begin();
+    while (it != openblends.end()) {
+        it = openblends.erase(it);
+    }
 }
