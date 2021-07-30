@@ -41,6 +41,8 @@ private:
         name schema_name;
         int32_t target; 
         vector<uint64_t> asset_ids;
+        bool ludio_paid;
+        bool nfts_transferred;
 
         uint64_t primary_key() const {return account_value;}
     };

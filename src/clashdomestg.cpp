@@ -1,17 +1,16 @@
 #include <clashdomestg.hpp>
 
-
 ACTION clashdomestg::createblend(name authorized_user, name target_collection, int32_t target_template, vector<int32_t> templates_to_mix) {
 
    require_auth(authorized_user);
 
-   // Exists target collection?
+   // Does target collection exist?
    auto itrCollection = atomicassets::collections.require_find(target_collection.value, "Error 12: No collection with this name exists!");
 
    // Get target collection info
    atomicassets::templates_t _templates = atomicassets::templates_t(ATOMIC, target_collection.value);
 
-   // Does the template exists in collection?
+   // Does the template exist in collection?
    auto itrTemplates = _templates.require_find(target_template, "Error 13: No template with this id exists!");
 
    // Is this smart contract authorized in target collection?
@@ -84,9 +83,12 @@ ACTION clashdomestg::createblend(name authorized_user, name target_collection, i
                 _openblends.schema_name = itrTemplate->schema_name;
                 _openblends.target = itrBlender->target; 
                 _openblends.asset_ids = asset_ids;
+                _openblends.nfts_transferred = true;
             });
 
         } else {
+
+            check(openblends_itr->ludio_paid, "LUDIO hasn't been transferred");
 
             // All right; let's blend and burn
             mintasset(itrBlender->collection, itrTemplate->schema_name, itrBlender->target, from);
@@ -121,26 +123,30 @@ ACTION clashdomestg::transfer(const name &from, const name &to, const asset &qua
     check(quantity.symbol == LUDIO_SYMBOL, "only LUDIO tokens allowed");
     check(quantity.amount > 0, "only positive LUDIO transfer allowed");
 
-    // TODO: MIRAR Q ES LA CANTIDAD DE LUDIO CORRECTA
+    if (memo == "clashdome struggle new blend") {
 
-    // TODO: REVISAR EL MEMO PARA Q SE PUEDAN TRANSFERIR LUDIO SIN HACER MEZCLAS
+        // TODO: MIRAR Q ES LA CANTIDAD DE LUDIO CORRECTA
 
-    auto openblends_itr = openblends.find(from.value);
+        auto openblends_itr = openblends.find(from.value);
 
-    // CHECK IF NFTs HAVE BEEN TRANSFERED
-    if (openblends_itr == openblends.end()) {
+        // CHECK IF THE NFTs HAVE BEEN TRANSFERED
+        if (openblends_itr == openblends.end()) {
 
-        openblends.emplace(get_self(), [&](auto &_openblends) {
-            _openblends.account_value = from.value;
-        });
+            openblends.emplace(get_self(), [&](auto &_openblends) {
+                _openblends.account_value = from.value;
+                _openblends.ludio_paid = true;
+            });
 
-    } else {
+        } else {
 
-        // HACER LA MEZCLA
-        mintasset(openblends_itr->collection, openblends_itr->schema_name, openblends_itr->target, from);
-        burnmixture(openblends_itr->asset_ids);
+            check(openblends_itr->nfts_transferred, "NFTs haven't been transferred");
 
-        openblends.erase(openblends_itr);
+            // HACER LA MEZCLA
+            mintasset(openblends_itr->collection, openblends_itr->schema_name, openblends_itr->target, from);
+            burnmixture(openblends_itr->asset_ids);
+
+            openblends.erase(openblends_itr);
+        }
     }
 }
 
