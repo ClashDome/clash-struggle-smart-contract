@@ -2,7 +2,7 @@
 
 ACTION clashdomestg::createblend(name authorized_user, name target_collection, int32_t target_template, vector<int32_t> templates_to_mix) {
 
-   require_auth(authorized_user);
+   require_auth(get_self());
 
    // Does target collection exist?
    auto itrCollection = atomicassets::collections.require_find(target_collection.value, "Error 12: No collection with this name exists!");
@@ -101,7 +101,7 @@ ACTION clashdomestg::createblend(name authorized_user, name target_collection, i
 
 ACTION clashdomestg::delblend(name authorized_account, int32_t target_template) {
     
-    require_auth(authorized_account);
+    require_auth(get_self());
 
     auto itrBlender = _blenders.require_find(target_template, "Error 01: No template with this ID!");
 
